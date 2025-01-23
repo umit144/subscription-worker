@@ -3,19 +3,10 @@ package models
 import "time"
 
 type Subscription struct {
-	ID            uint64
-	DeviceID      uint64
-	ApplicationID uint64
-	Receipt       string
-	Status        int8
-	ExpireDate    time.Time
-	Credentials   *ApplicationCredential
-}
-
-type ApplicationCredential struct {
-	ID            uint64
-	ApplicationID uint64
-	Platform      string
-	Username      string
-	Password      string
+	ID            uint64    `db:"id"`
+	DeviceID      uint64    `db:"device_id"`
+	ApplicationID uint64    `db:"application_id"`
+	Receipt       string    `db:"receipt"`
+	Status        int8      `db:"status"`
+	ExpireDate    time.Time `db:"expire_date"`
 }
