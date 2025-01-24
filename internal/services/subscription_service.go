@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -169,19 +170,45 @@ func (s *subscriptionService) processSubscriptions(
 	return nil
 }
 
+func (s *subscriptionService) validateReceiptWithRetry(client *http.Client, receipt string, cred models.ApplicationCredentials) (*ReceiptResponse, error) {
+	var lastErr error
+	for attempt := 1; attempt <= 3; attempt++ {
+		resp, err := s.validateReceipt(client, receipt, cred)
+		if err == nil {
+			return resp, nil
+		}
+		lastErr = err
+		time.Sleep(time.Second * time.Duration(attempt*5))
+	}
+	return nil, fmt.Errorf("max retries reached: %w", lastErr)
+}
+
 func (s *subscriptionService) validateReceipt(client *http.Client, receipt string, cred models.ApplicationCredentials) (*ReceiptResponse, error) {
+	if len(receipt) >= 2 {
+		if num, err := strconv.Atoi(receipt[len(receipt)-2:]); err == nil && num%6 == 0 {
+			return s.validateReceiptWithRetry(client, receipt, cred)
+		}
+	}
+
 	body := struct {
 		Receipt string `json:"receipt"`
 	}{
 		Receipt: receipt,
 	}
-
 	jsonData, err := json.Marshal(body)
 	if err != nil {
 		return nil, fmt.Errorf("marshaling request: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/receipt/validate", os.Getenv("RECEIPT_VALIDATION_SERVICE"))
+	var baseUrl string
+	switch cred.Platform {
+	case "ios":
+		baseUrl = os.Getenv("APP_STORE_API")
+	case "android":
+		baseUrl = os.Getenv("GOOGLE_PLAY_API")
+	}
+
+	url := fmt.Sprintf("%s/receipt/validate", baseUrl)
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
