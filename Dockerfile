@@ -10,7 +10,7 @@ COPY . .
 
 COPY .env.example .env
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o main .
+RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/main.go
 
 EXPOSE 3306
 EXPOSE 6379
